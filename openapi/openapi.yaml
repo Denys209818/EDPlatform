@@ -1,0 +1,559 @@
+openapi: 3.0.3
+info:
+  title: Educational Platform API
+  version: "1.0.0"
+  description: >
+    Навчальна платформа для вчителів шкіл або репетиторів.
+    Схожий функціонал до Kahoot: real-time активності із проходженням тестів,
+    виконанням завдань та естімацією користувачів.
+    Ресурси: tests, tasks.
+security: []
+servers:
+  - url: /
+
+paths:
+  /tests:
+    get:
+      operationId: getTests
+      summary: Список усіх доступних тестів (cursor-пагінація)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Скільки елементів повернути за один запит.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Непрозорий токен курсора з попередньої відповіді (next_cursor).
+            Клієнт не повинен намагатись його парсити чи будувати самостійно.
+      responses:
+        "200":
+          description: Список тестів
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestPage"
+        "400":
+          description: Некоректні query-параметри
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    post:
+      operationId: createTest
+      summary: Створити тест
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: >
+            Унікальний ключ ідемпотентності, який клієнт генерує для кожної
+            спроби створення тесту. Повторний запит з тим самим ключем та
+            тим самим тілом повертає ту саму відповідь без повторного
+            створення тесту. Той самий ключ з іншим тілом вважається
+            конфліктом.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, imageUrl, taskIds]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                imageUrl:
+                  type: string
+                  format: uri
+                taskIds:
+                  type: array
+                  description: Id вже створених задач (див. POST /tasks), які входять у тест.
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Тест створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Test"
+        "400":
+          description: Невалідне тіло запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Той самий Idempotency-Key вжито з іншим тілом запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /tests/{testId}:
+    get:
+      operationId: getTestById
+      summary: Отримати тест за id
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Тест
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Test"
+        "404":
+          description: Тест не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    patch:
+      operationId: updateTest
+      summary: Частково оновити тест
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                imageUrl:
+                  type: string
+                  format: uri
+                taskIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Тест оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Test"
+        "400":
+          description: Невалідне тіло запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Тест не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    delete:
+      operationId: deleteTest
+      summary: Видалити тест за id
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Тест видалено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+        "404":
+          description: Тест не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /tests/{testId}/submissions:
+    post:
+      operationId: passTest
+      summary: Здати відповіді на тест
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/TaskAnswer"
+      responses:
+        "201":
+          description: Тест виконано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskResult"
+        "400":
+          description: Невалідне тіло запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Тест не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /tasks:
+    get:
+      operationId: getTasks
+      summary: Список усіх доступних задач (cursor-пагінація)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Скільки елементів повернути за один запит.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Непрозорий токен курсора з попередньої відповіді (next_cursor).
+            Клієнт не повинен намагатись його парсити чи будувати самостійно.
+      responses:
+        "200":
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPage"
+        "400":
+          description: Некоректні query-параметри
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    post:
+      operationId: createTask
+      summary: Створити задачу
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: >
+            Унікальний ключ ідемпотентності. Повторний запит з тим самим
+            ключем і тим самим тілом повертає ту саму відповідь без
+            повторного створення задачі. Той самий ключ з іншим тілом
+            вважається конфліктом.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, condition, imageUrl, options]
+              properties:
+                title:
+                  type: string
+                condition:
+                  type: string
+                imageUrl:
+                  type: string
+                  format: uri
+                options:
+                  type: array
+                  minItems: 2
+                  items:
+                    $ref: "#/components/schemas/TaskOption"
+      responses:
+        "201":
+          description: Задачу створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Невалідне тіло запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Той самий Idempotency-Key вжито з іншим тілом запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      summary: Отримати задачу за id
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Завдання отримано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Задачу не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    patch:
+      operationId: editTask
+      summary: Редагувати задачу
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                condition:
+                  type: string
+                imageUrl:
+                  type: string
+                  format: uri
+                options:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TaskOption"
+      responses:
+        "200":
+          description: Задачу оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Невалідне тіло запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Задачу не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    delete:
+      operationId: deleteTask
+      summary: Видалити задачу
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Задачу видалено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+        "404":
+          description: Задачу не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI, що ідентифікує тип помилки.
+          example: "https://example.com/errors/validation-error"
+        title:
+          type: string
+          description: Коротка людиночитна назва типу помилки.
+          example: "Validation Error"
+        status:
+          type: integer
+          description: HTTP-статус-код.
+          example: 400
+        detail:
+          type: string
+          description: Деталі саме цього випадку помилки.
+          example: "request/headers must have required property 'idempotency-key'"
+        instance:
+          type: string
+          format: uri
+          description: Посилання на конкретний випадок помилки.
+          example: "https://example.com/errors/instances/abc-123"
+        traceId:
+          type: string
+          description: Ідентифікатор для кореляції з серверними логами.
+
+    TaskOption:
+      type: object
+      description: Варіант відповіді, який задає автор задачі.
+      required: [text, isCorrect]
+      properties:
+        text:
+          type: string
+        isCorrect:
+          type: boolean
+
+    Task:
+      type: object
+      required: [id, title, condition, imageUrl, options]
+      properties:
+        id:
+          type: string
+          readOnly: true
+        title:
+          type: string
+        condition:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskOption"
+
+    TaskPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        next_cursor:
+          type: string
+          nullable: true
+          description: Непрозорий токен наступної сторінки. null = сторінок більше немає.
+
+    TaskAnswer:
+      type: object
+      description: Відповідь студента на одну задачу під час здачі тесту.
+      required: [taskId, selectedOption]
+      properties:
+        taskId:
+          type: string
+        selectedOption:
+          type: string
+
+    TaskResult:
+      type: object
+      required: [testId, score, total, checkedAt]
+      properties:
+        testId:
+          type: string
+        score:
+          type: integer
+          description: Кількість правильних відповідей.
+        total:
+          type: integer
+          description: Загальна кількість завдань у тесті.
+        checkedAt:
+          type: string
+          format: date-time
+
+    Test:
+      type: object
+      required: [id, title, description, imageUrl, taskIds]
+      properties:
+        id:
+          type: string
+          readOnly: true
+        title:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        taskIds:
+          type: array
+          items:
+            type: string
+
+    TestPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Test"
+        next_cursor:
+          type: string
+          nullable: true
+          description: Непрозорий токен наступної сторінки. null = сторінок більше немає.
