@@ -55,3 +55,30 @@ curl "localhost:3000/tests?limit=1"
 ```
 
 Структура: `src/tasks` і `src/tests` — самі ресурси (controller + service + dto), `src/exceptions` — переклад помилок у problem+json, `openapi/openapi.yaml` — контракт.
+
+## Configuration
+
+Змінні середовища (`.env`, контракт — `.env.example`):
+
+| Змінна             | Призначення                                                |
+| ------------------ | ---------------------------------------------------------- |
+| `PORT`             | порт застосунку                                            |
+| `DB_HOST`          | хост Postgres                                              |
+| `DB_PORT`          | порт Postgres                                              |
+| `DB_USER`          | роль Postgres                                              |
+| `DB_NAME`          | назва БД                                                   |
+| `DB_PASSWORD_FILE` | шлях до файла-секрета з паролем БД (`secrets/db_password`) |
+
+Запуск:
+
+```bash
+docker compose up -d --build
+```
+
+Ротація пароля БД (без рестарту сервісу):
+
+```bash
+bash rotate.sh
+```
+
+Скрипт міняє пароль ролі, оновлює `secrets/db_password` і рве старі з'єднання — `pg.Pool` перечитує файл на нове з'єднання, `curl localhost:3000/health` продовжує відповідати 200 з uptime, що росте.
