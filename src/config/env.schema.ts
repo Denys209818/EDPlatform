@@ -8,6 +8,8 @@ export const envSchema = z.object({
   DB_USER: z.string().nonempty(),
   DB_NAME: z.string().nonempty(),
   DB_PASSWORD_FILE: z.string().nonempty(),
+
+  DB_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

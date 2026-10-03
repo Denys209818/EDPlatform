@@ -60,14 +60,15 @@ curl "localhost:3000/tests?limit=1"
 
 Змінні середовища (`.env`, контракт — `.env.example`):
 
-| Змінна             | Призначення                                                |
-| ------------------ | ---------------------------------------------------------- |
-| `PORT`             | порт застосунку                                            |
-| `DB_HOST`          | хост Postgres                                              |
-| `DB_PORT`          | порт Postgres                                              |
-| `DB_USER`          | роль Postgres                                              |
-| `DB_NAME`          | назва БД                                                   |
-| `DB_PASSWORD_FILE` | шлях до файла-секрета з паролем БД (`secrets/db_password`) |
+| Змінна             | Призначення                                                                                               | Джерело                                                                             |
+| ------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `PORT`             | порт застосунку                                                                                           | `.env`                                                                              |
+| `DB_HOST`          | хост Postgres                                                                                             | `.env`                                                                              |
+| `DB_PORT`          | порт Postgres                                                                                             | `.env`                                                                              |
+| `DB_USER`          | роль Postgres                                                                                             | `.env`                                                                              |
+| `DB_NAME`          | назва БД                                                                                                  | `.env`                                                                              |
+| `DB_PASSWORD_FILE` | шлях до файла-секрета з паролем БД (`secrets/db_password`)                                                | `.env` + `secrets/db_password` (не в git)                                           |
+| `DB_URL`           | опціональний повний рядок підключення до БД ДЗ #12 (альтернатива `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_NAME`) | `.env` (локально); у dev/prod — значення з того самого сховища, що й решта секретів |
 
 Запуск:
 
@@ -82,3 +83,32 @@ bash rotate.sh
 ```
 
 Скрипт міняє пароль ролі, оновлює `secrets/db_password` і рве старі з'єднання — `pg.Pool` перечитує файл на нове з'єднання, `curl localhost:3000/health` продовжує відповідати 200 з uptime, що росте.
+
+## База даних (ДЗ #12 - схема, seed, пошук)
+
+Головна таблиця і таблиця пошуку (q4) — одна й та сама: tblTests (110 000+ рядків; має created_by, status, search_vector).
+
+Підняти базу (свіжий клон, чистий volume):
+
+```bash
+docker compose up -d --wait db
+```
+
+Підключитись:
+
+```bash
+docker compose exec db psql -U root -d marketplace
+```
+
+Повний цикл перевірки (схема → seed → EXPLAIN до → індекси → EXPLAIN після):
+
+```bash
+docker compose exec -T db psql -U root -d marketplace -f - < db/schema.sql
+docker compose exec -T db psql -U root -d marketplace -f - < db/seed.sql
+docker compose exec -T db psql -U root -d marketplace -c "EXPLAIN (ANALYZE, BUFFERS) $(cat db/queries/q1.sql)"
+docker compose exec -T db psql -U root -d marketplace -f - < db/indexes.sql
+docker compose exec -T db psql -U root -d marketplace -c "ANALYZE;"
+docker compose exec -T db psql -U root -d marketplace -c "EXPLAIN (ANALYZE, BUFFERS) $(cat db/queries/q1.sql)"
+```
+
+Результати та пояснення — db/OPTIMIZATIONS.md.
