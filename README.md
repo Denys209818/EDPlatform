@@ -112,3 +112,5 @@ docker compose exec -T db psql -U root -d marketplace -c "EXPLAIN (ANALYZE, BUFF
 ```
 
 Результати та пояснення — db/OPTIMIZATIONS.md.
+
+npm run migration:generate -- InitTables
