@@ -18,6 +18,7 @@
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:show": "npm run typeorm -- migration:show",
     "seed": "node --no-warnings --loader ts-node/esm src/seed.ts",
+    "report": "node --no-warnings --loader ts-node/esm src/report.ts",
     "demo:nplus1": "node --no-warnings --loader ts-node/esm src/demo-nplus1.ts"
   },
   "dependencies": {
