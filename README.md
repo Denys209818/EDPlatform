@@ -112,3 +112,29 @@ docker compose exec -T db psql -U root -d marketplace -c "EXPLAIN (ANALYZE, BUFF
 ```
 
 Результати та пояснення — db/OPTIMIZATIONS.md.
+
+npm run migration:generate -- InitTables
+
+## ORM (ДЗ #13)
+
+### N+1: демо і фікс
+
+npm run demo:nplus1 вмикає logging: ['query'], виконує запит "тести -> завдання -> відповіді" (8 тестів, 16 завдань) різними способами і друкує кількість SQL-запитів:
+
+| Стратегія                         | Кількість запитів |
+| --------------------------------- | ----------------- |
+| наївно (запит у циклі)            | 25 (1 + 8 + 16)   |
+| `relations` / `leftJoinAndSelect` | 1                 |
+| `relationLoadStrategy: 'query'`   | 5                 |
+
+Наївний варіант росте разом з розміром даних, обидва фікси - ні: JOIN дає один запит, `query` — по запиту на рівень зв'язків.
+
+### QueryBuilder vs Repository
+
+npm run report виводить статистику по тестах (кількість завдань і учасників): агрегати COUNT(DISTINCT ...), GROUP BY і два LEFT JOIN, результат через getRawMany().
+
+Межа проходить за формою результату: якщо на виході entity, використовуємо Repository. Якщо потрібні агрегати, GROUP BY чи плоскі рядки, які не відповідають жодній entity, використовуємо QueryBuilder.
+
+### Секрети: scripts/with-secrets.sh
+
+`scripts/with-secrets.sh [env] [команда...]` запускає команду з секретами з Infisical (логін береться з `.secrets/infisical.env`, поза git). `SKIP_VAULT=1` пропускає сховище й виконує команду зі значеннями, які вже є в оточенні (для CI і грейдера).

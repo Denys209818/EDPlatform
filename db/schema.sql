@@ -34,7 +34,7 @@ CREATE TABLE tblTests (
 
 CREATE TABLE tblTasks (
   id UUID PRIMARY KEY,
-  Condition TEXT NOT NULL,
+  condition TEXT NOT NULL,
   test_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ,
