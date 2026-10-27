@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from "typeorm";
+import { Check, Column, Entity, OneToMany } from "typeorm";
 import { TestUserEntity } from "./testUser.entity.js";
 import { BaseEntity } from "../base.entity.js";
 import { TaskEntity } from "../task/task.entity.js";
@@ -10,6 +10,7 @@ export enum TestStatus {
 }
 
 @Entity({ name: "tblTests" })
+@Check("CHK_price_non_negative", '"price" >= 0')
 export class TestEntity extends BaseEntity {
   @Column({ type: "varchar" })
   title: string;
@@ -23,6 +24,18 @@ export class TestEntity extends BaseEntity {
     default: TestStatus.DRAFT,
   })
   status: TestStatus;
+
+  @Column({
+    type: "bool",
+    default: false,
+  })
+  isPaid: boolean;
+
+  @Column({
+    type: "integer",
+    default: 0,
+  })
+  price: number;
 
   @OneToMany((_) => TaskEntity, (task) => task.test)
   tasks: TaskEntity[];

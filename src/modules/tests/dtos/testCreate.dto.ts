@@ -1,4 +1,13 @@
-import { IsArray, IsString, IsUrl } from "class-validator";
+import {
+  IsArray,
+  IsBoolean,
+  IsDefined,
+  IsNumber,
+  IsString,
+  IsUrl,
+  Min,
+  ValidateIf,
+} from "class-validator";
 
 export class CreateTestDto {
   @IsString()
@@ -7,9 +16,12 @@ export class CreateTestDto {
   @IsString()
   description: string;
 
-  @IsUrl()
-  imageUrl: string;
+  @IsBoolean()
+  isPaid: boolean;
 
-  @IsArray()
-  taskIds: string[];
+  @ValidateIf((o) => o.isPaid === true)
+  @IsDefined()
+  @IsNumber()
+  @Min(0)
+  price?: number;
 }
