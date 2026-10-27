@@ -166,8 +166,13 @@ try {
 
       const tests = await manager.save(
         TestEntity,
-        TESTS.map(([title, description, status]) =>
-          manager.create(TestEntity, { title, description, status }),
+        TESTS.map(([title, description, status], i) =>
+          manager.create(TestEntity, {
+            title,
+            description,
+            status,
+            createdBy: users[i % users.length],
+          }),
         ),
       );
 

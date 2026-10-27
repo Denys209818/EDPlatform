@@ -15,7 +15,7 @@ export class TaskEntity extends BaseEntity {
   @Column({ type: "varchar" })
   condition: string;
 
-  @ManyToOne((_) => TestEntity, (test) => test.tasks)
+  @ManyToOne((_) => TestEntity, (test) => test.tasks, { onDelete: "CASCADE" })
   @JoinColumn({ name: "test_id" })
   test: Relation<TestEntity>;
 

@@ -13,13 +13,13 @@
     "check:env": "npm run build && node scripts/check-env-example.mjs",
     "format": "prettier --write .",
     "typeorm": "node --no-warnings --loader ts-node/esm node_modules/typeorm/cli.js -d src/data-source.ts",
-    "migration:generate": "npm run typeorm -- migration:generate",
-    "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert",
-    "migration:show": "npm run typeorm -- migration:show",
-    "seed": "node --no-warnings --loader ts-node/esm src/seed.ts",
-    "report": "node --no-warnings --loader ts-node/esm src/report.ts",
-    "demo:nplus1": "node --no-warnings --loader ts-node/esm src/demo-nplus1.ts"
+    "migration:generate": "scripts/with-secrets.sh dev npm run typeorm -- migration:generate",
+    "migration:run": "scripts/with-secrets.sh dev npm run typeorm -- migration:run",
+    "migration:revert": "scripts/with-secrets.sh dev npm run typeorm -- migration:revert",
+    "migration:show": "scripts/with-secrets.sh dev npm run typeorm -- migration:show",
+    "seed": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/seed.ts",
+    "report": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/report.ts",
+    "demo:nplus1": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/demo-nplus1.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
