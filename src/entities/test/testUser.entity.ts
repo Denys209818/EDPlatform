@@ -16,11 +16,15 @@ export class TestUserEntity {
   @PrimaryColumn("uuid")
   user_id: string;
 
-  @ManyToOne((_) => TestEntity, (test) => test.testUsers)
+  @ManyToOne((_) => TestEntity, (test) => test.testUsers, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "test_id" })
   test: Relation<TestEntity>;
 
-  @ManyToOne((_) => UserEntity, (user) => user.testUsers)
+  @ManyToOne((_) => UserEntity, (user) => user.testUsers, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "user_id" })
   user: Relation<UserEntity>;
 }

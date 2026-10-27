@@ -1,5 +1,6 @@
 import { Check, Column, Entity, OneToMany } from "typeorm";
 import { BaseEntity } from "../base.entity.js";
+import { TestEntity } from "../test/test.entity.js";
 import { TestUserEntity } from "../test/testUser.entity.js";
 
 @Entity({ name: "tblUsers" })
@@ -28,6 +29,9 @@ export class UserEntity extends BaseEntity {
     default: 0,
   })
   balance: number;
+
+  @OneToMany((_) => TestEntity, (test) => test.createdBy)
+  createdTests: TestEntity[];
 
   @OneToMany((_) => TestUserEntity, (testUser) => testUser.user)
   testUsers: TestUserEntity[];

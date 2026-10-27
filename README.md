@@ -138,3 +138,23 @@ npm run report виводить статистику по тестах (кіль
 ### Секрети: scripts/with-secrets.sh
 
 `scripts/with-secrets.sh [env] [команда...]` запускає команду з секретами з Infisical (логін береться з `.secrets/infisical.env`, поза git). `SKIP_VAULT=1` пропускає сховище й виконує команду зі значеннями, які вже є в оточенні (для CI і грейдера).
+
+## Grading
+
+Запуск на свіжому клоні без доступу до Infisical:
+
+```bash
+cp .env.example .env
+mkdir -p secrets && echo "changeme" > secrets/db_password   # файл не в git
+docker compose up -d db --wait
+
+export DB_HOST=localhost DB_PORT=5432 DB_USER=root DB_NAME=marketplace
+export DB_PASSWORD_FILE=secrets/db_password SKIP_VAULT=1
+
+npm ci
+npm run migration:run
+npm run seed
+npm run report
+```
+
+SKIP_VAULT=1 змушує scripts/with-secrets.sh пропустити Infisical і виконати команду зі змінними з оточення. Паролем у secrets/db_password може бути будь-який рядок: Postgres бере його при першому створенні тому pgdata.

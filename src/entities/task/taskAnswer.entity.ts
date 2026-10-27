@@ -7,7 +7,9 @@ export class TaskAnswerEntity extends BaseEntity {
   @Column({ type: "varchar" })
   content: string;
 
-  @ManyToOne((_) => TaskEntity, (task) => task.taskAnswers)
+  @ManyToOne((_) => TaskEntity, (task) => task.taskAnswers, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "task_id" })
   task: Relation<TaskEntity>;
 }
