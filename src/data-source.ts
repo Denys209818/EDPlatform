@@ -24,7 +24,10 @@ export const dataSourceOptions: DataSourceOptions = {
   password: currentPassword,
   database: configService.getOrThrow<string>("DB_NAME"),
   migrations: [join(__dirname, "migrations/*.ts")],
-  entities: [join(__dirname, "entities/**/*.entity.ts")],
+  entities: [
+    join(__dirname, "entities/**/*.entity.ts"),
+    join(__dirname, "modules/**/*.entity.ts"),
+  ],
   migrationsTableName: "migrations",
   migrationsRun: false,
   logging: process.env.ENV !== "production",

@@ -1,4 +1,4 @@
-import { randomUUID, createHash } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   Injectable,
   NotFoundException,
@@ -8,6 +8,11 @@ import { CreateTestDto } from "./dtos/testCreate.dto.js";
 import { TestDto } from "./dtos/test.dto.js";
 import { TestPageDto } from "./dtos/testPage.dto.js";
 import { IHashWithResponse } from "./types.js";
+import { TestEntity, TestStatus } from "../../entities/test/test.entity.js";
+import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
+import { DataSource, MoreThan, Repository } from "typeorm";
+import { BuyTestDto } from "./dtos/buyTest.dto.js";
+import { checkout } from "./checkout.js";
 
 const DEFAULT_LIMIT = 20;
 
@@ -21,11 +26,17 @@ function decodeCursor(cursor: string): string {
 
 @Injectable()
 export class TestService {
-  private readonly tests: TestDto[] = [];
   private readonly idempotencyKeys = new Map<
     string,
     IHashWithResponse<TestDto>
   >();
+
+  constructor(
+    @InjectRepository(TestEntity)
+    private testRepository: Repository<TestEntity>,
+    @InjectDataSource()
+    private dataSource: DataSource,
+  ) {}
 
   public async getTests(limit?: string, cursor?: string): Promise<TestPageDto> {
     const parsedLimit = Number(limit);
@@ -33,16 +44,20 @@ export class TestService {
       Number.isInteger(parsedLimit) && parsedLimit > 0
         ? parsedLimit
         : DEFAULT_LIMIT;
-    const startIndex = cursor
-      ? this.tests.findIndex((t) => t.id === decodeCursor(cursor)) + 1
-      : 0;
 
-    const items = this.tests.slice(startIndex, startIndex + pageSize);
+    const entities = await this.testRepository.find({
+      where: cursor ? { id: MoreThan(decodeCursor(cursor)) } : {},
+      relations: { tasks: true },
+      order: { id: "ASC" },
+      take: pageSize + 1,
+    });
+
+    const hasMore = entities.length > pageSize;
+    const items = entities
+      .slice(0, pageSize)
+      .map((e) => this.convertEntityToDto(e));
     const lastItem = items[items.length - 1];
-    const nextCursor =
-      startIndex + pageSize < this.tests.length && lastItem
-        ? encodeCursor(lastItem.id)
-        : null;
+    const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.id) : null;
 
     return { items, next_cursor: nextCursor };
   }
@@ -63,22 +78,76 @@ export class TestService {
       );
     }
 
-    const test: TestDto = { id: randomUUID(), ...testBody };
-    this.tests.push(test);
-    this.idempotencyKeys.set(idempotencyKey, { bodyHash, response: test });
+    const { title, description, isPaid, price } = testBody;
 
-    return test;
+    const saved = await this.testRepository.save(
+      this.testRepository.create({
+        title,
+        description,
+        isPaid,
+        price: isPaid ? (price ?? 0) : 0,
+        status: TestStatus.DRAFT,
+      }),
+    );
+
+    const response = this.convertEntityToDto({ ...saved, tasks: [] });
+    this.idempotencyKeys.set(idempotencyKey, { bodyHash, response });
+
+    return response;
   }
 
   public async getTestById(testId: string): Promise<TestDto> {
-    const test = this.tests.find((t) => t.id === testId);
+    const test = await this.testRepository.findOne({
+      where: { id: testId },
+      relations: { tasks: true },
+    });
     if (!test) {
       throw new NotFoundException(`Test ${testId} not found`);
     }
-    return test;
+    return this.convertEntityToDto(test);
   }
 
-  private hashBody(body: Omit<TestDto, "id">): string {
+  public async buyTest(
+    idempotencyKey: string,
+    buyTestDto: BuyTestDto,
+  ): Promise<TestDto> {
+    const bodyHash = this.hashBody(buyTestDto);
+    const existing = this.idempotencyKeys.get(idempotencyKey);
+
+    if (existing) {
+      if (existing.bodyHash === bodyHash) {
+        return existing.response;
+      }
+      throw new UnprocessableEntityException(
+        "idempotency key already used with a different request body",
+      );
+    }
+
+    const { userId, testId } = buyTestDto;
+
+    const test = await checkout(this.dataSource, userId, testId);
+
+    const response = this.convertEntityToDto(test);
+    this.idempotencyKeys.set(idempotencyKey, { bodyHash, response });
+
+    return response;
+  }
+
+  private hashBody<T>(body: T): string {
     return createHash("sha256").update(JSON.stringify(body)).digest("hex");
+  }
+
+  private convertEntityToDto(entity: TestEntity): TestDto {
+    const { id, title, description, status, isPaid, price, tasks } = entity;
+
+    return {
+      id,
+      title,
+      description,
+      status,
+      isPaid,
+      price,
+      taskIds: (tasks ?? []).map((task) => task.id),
+    };
   }
 }

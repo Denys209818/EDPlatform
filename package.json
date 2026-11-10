@@ -19,7 +19,10 @@
     "migration:show": "scripts/with-secrets.sh dev npm run typeorm -- migration:show",
     "seed": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/seed.ts",
     "report": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/report.ts",
-    "demo:nplus1": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/demo-nplus1.ts"
+    "demo:nplus1": "scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/demo-nplus1.ts",
+    "demo:race": "bash scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/demo-race.ts",
+    "demo:workers": "bash scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/demo-workers.ts",
+    "demo:retry": "bash scripts/with-secrets.sh dev node --no-warnings --loader ts-node/esm src/demo-retry.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

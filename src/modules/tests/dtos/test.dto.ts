@@ -1,4 +1,11 @@
-import { IsArray, IsString, IsUrl } from "class-validator";
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsString,
+} from "class-validator";
+import { TestStatus } from "../../../entities/test/test.entity.js";
 
 export class TestDto {
   @IsString()
@@ -10,8 +17,14 @@ export class TestDto {
   @IsString()
   description: string;
 
-  @IsUrl()
-  imageUrl: string;
+  @IsEnum(TestStatus)
+  status: TestStatus;
+
+  @IsBoolean()
+  isPaid: boolean;
+
+  @IsNumber()
+  price: number;
 
   @IsArray()
   taskIds: string[];

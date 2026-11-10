@@ -12,6 +12,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { HealthModule } from "./health/health.module.js";
 import { readFile } from "node:fs/promises";
 import { UserModule } from "./user/user.module.js";
+import { JobModule } from "./jobs/job.module.js";
 
 // Took example from: https://github.com/ahilke/nestjs-with-express-openapi-validator
 @Module({
@@ -35,6 +36,7 @@ import { UserModule } from "./user/user.module.js";
           username: config.get("DB_USER", { infer: true }),
           password: currentPassword,
           database: config.get("DB_NAME", { infer: true }),
+          autoLoadEntities: true,
         };
       },
     }),
@@ -42,6 +44,7 @@ import { UserModule } from "./user/user.module.js";
     HealthModule,
     TaskModule,
     TestModule,
+    JobModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: OpenApiExceptionFilter },

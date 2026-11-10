@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   Entity,
   JoinColumn,
@@ -18,6 +19,8 @@ export enum TestStatus {
 }
 
 @Entity({ name: "tblTests" })
+@Check("CHK_price_non_negative", '"price" >= 0')
+@Check("CHK_seats_left_non_negative", '"seats_left" >= 0')
 export class TestEntity extends BaseEntity {
   @Column({ type: "varchar" })
   title: string;
@@ -31,6 +34,22 @@ export class TestEntity extends BaseEntity {
     default: TestStatus.DRAFT,
   })
   status: TestStatus;
+
+  @Column({
+    type: "bool",
+    default: false,
+  })
+  isPaid: boolean;
+
+  @Column({
+    type: "integer",
+    default: 0,
+  })
+  price: number;
+
+  // кількість вільних місць на тест; NULL = без обмежень
+  @Column({ type: "integer", nullable: true })
+  seats_left: number | null;
 
   @ManyToOne((_) => UserEntity, (user) => user.createdTests, {
     onDelete: "RESTRICT",
