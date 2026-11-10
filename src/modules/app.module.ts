@@ -6,10 +6,12 @@ import { OpenApiExceptionFilter } from "../exceptions/openapi-exception.filter.j
 import { TaskModule } from "./tasks/task.module.js";
 import { TestModule } from "./tests/test.module.js";
 import { HttpExceptionFilter } from "../exceptions/http-exception.filter.js";
-import { ConfigModule } from "@nestjs/config";
-import { validate } from "../config/env.schema.js";
-import { DatabaseModule } from "./database/database.module.js";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { Env, validate } from "../config/env.schema.js";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import { HealthModule } from "./health/health.module.js";
+import { readFile } from "node:fs/promises";
+import { UserModule } from "./user/user.module.js";
 
 // Took example from: https://github.com/ahilke/nestjs-with-express-openapi-validator
 @Module({
@@ -19,7 +21,24 @@ import { HealthModule } from "./health/health.module.js";
       envFilePath: [".env", "../../.env"],
       validate,
     }),
-    DatabaseModule,
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService<Env, true>) => {
+        const passwordFile = config.get("DB_PASSWORD_FILE", { infer: true });
+
+        const currentPassword = (await readFile(passwordFile, "utf8")).trim();
+
+        return {
+          type: "postgres",
+          host: config.get("DB_HOST", { infer: true }),
+          port: config.get("DB_PORT", { infer: true }),
+          username: config.get("DB_USER", { infer: true }),
+          password: currentPassword,
+          database: config.get("DB_NAME", { infer: true }),
+        };
+      },
+    }),
+    UserModule,
     HealthModule,
     TaskModule,
     TestModule,

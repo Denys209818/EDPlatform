@@ -1,4 +1,9 @@
-import { ArrayMinSize, IsArray, IsString, ValidateNested } from "class-validator";
+import {
+  ArrayMinSize,
+  IsArray,
+  IsString,
+  ValidateNested,
+} from "class-validator";
 import { Type } from "class-transformer";
 import { TaskOptionDto } from "./taskOption.dto.js";
 
