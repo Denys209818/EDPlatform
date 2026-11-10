@@ -9,8 +9,10 @@ import { TestDto } from "./dtos/test.dto.js";
 import { TestPageDto } from "./dtos/testPage.dto.js";
 import { IHashWithResponse } from "./types.js";
 import { TestEntity, TestStatus } from "../../entities/test/test.entity.js";
-import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
+import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
+import { DataSource, MoreThan, Repository } from "typeorm";
+import { BuyTestDto } from "./dtos/buyTest.dto.js";
+import { checkout } from "./checkout.js";
 
 const DEFAULT_LIMIT = 20;
 
@@ -32,6 +34,8 @@ export class TestService {
   constructor(
     @InjectRepository(TestEntity)
     private testRepository: Repository<TestEntity>,
+    @InjectDataSource()
+    private dataSource: DataSource,
   ) {}
 
   public async getTests(limit?: string, cursor?: string): Promise<TestPageDto> {
@@ -103,7 +107,33 @@ export class TestService {
     return this.convertEntityToDto(test);
   }
 
-  private hashBody(body: CreateTestDto): string {
+  public async buyTest(
+    idempotencyKey: string,
+    buyTestDto: BuyTestDto,
+  ): Promise<TestDto> {
+    const bodyHash = this.hashBody(buyTestDto);
+    const existing = this.idempotencyKeys.get(idempotencyKey);
+
+    if (existing) {
+      if (existing.bodyHash === bodyHash) {
+        return existing.response;
+      }
+      throw new UnprocessableEntityException(
+        "idempotency key already used with a different request body",
+      );
+    }
+
+    const { userId, testId } = buyTestDto;
+
+    const test = await checkout(this.dataSource, userId, testId);
+
+    const response = this.convertEntityToDto(test);
+    this.idempotencyKeys.set(idempotencyKey, { bodyHash, response });
+
+    return response;
+  }
+
+  private hashBody<T>(body: T): string {
     return createHash("sha256").update(JSON.stringify(body)).digest("hex");
   }
 

@@ -103,6 +103,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problem"
 
+  /tests/buy:
+    post:
+      operationId: buyTest
+      summary: Купити тест (місце + оплата + доступ в одній транзакції)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: >
+            Унікальний ключ ідемпотентності покупки. Повтор з тим самим ключем і
+            тілом повертає ту саму відповідь без повторного списання.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [testId, userId]
+              properties:
+                testId:
+                  type: string
+                  format: uuid
+                userId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Тест куплено, доступ видано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Test"
+        "400":
+          description: Невалідне тіло запиту або недостатньо коштів
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Тест або користувача не знайдено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Місць немає або тест уже куплено
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Той самий Idempotency-Key вжито з іншим тілом запиту
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
   /tests/{testId}:
     get:
       operationId: getTestById
